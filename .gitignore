@@ -1,0 +1,14 @@
+# OS files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+
+# Env files (submodules have their own; this covers anything at the root)
+.env
+.env.local

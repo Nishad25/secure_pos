@@ -1,0 +1,6 @@
+[submodule "posguard/Restaurant_POS_System"]
+	path = posguard/Restaurant_POS_System
+	url = https://github.com/amritmaurya1504/Restaurant_POS_System.git
+[submodule "posguard/fake-payment-gateway"]
+	path = posguard/fake-payment-gateway
+	url = https://github.com/ShalithaCell/fake-payment-gateway.git

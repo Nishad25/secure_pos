@@ -1,0 +1,26 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "fake-payment-gateway",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "start"],
+      "cwd": "fake-payment-gateway",
+      "port": 5100
+    },
+    {
+      "name": "pos-backend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "Restaurant_POS_System/pos-backend",
+      "port": 8000
+    },
+    {
+      "name": "pos-frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "Restaurant_POS_System/pos-frontend",
+      "port": 5173
+    }
+  ]
+}
