@@ -12,3 +12,5 @@ Desktop.ini
 # Env files (submodules have their own; this covers anything at the root)
 .env
 .env.local
+sdn_env/
+venv/
