@@ -4,6 +4,7 @@ const KoaStatic = require('koa-static');
 const cors = require('@koa/cors');
 const router = require('./api');
 const { exceptionService } = require('./services');
+const securityTelemetry = require('./middlewares/securityTelemetry');
 
 const app = new Koa();
 
@@ -12,6 +13,7 @@ app
     .use(cors())
     .use(exceptionService.errorHandler) // register generic error handler middleware
     .use(exceptionService.jsonErrorHandler) // register json error handler middleware
+    .use(securityTelemetry) // reports failed payments / 5xx spikes to the POSGuard dashboard
     .use(router()) // Use the Router on the sub routes
     .use(KoaStatic('public')) // server statics
     // Bootstrap the server

@@ -1,0 +1,15 @@
+[Unit]
+Description=POSGuard RAM Scrape Monitor (Gap #2)
+After=network.target
+
+[Service]
+Type=simple
+# EDIT these two paths to your actual posguard checkout before installing.
+WorkingDirectory=/home/REPLACE_ME/securePos/posguard
+ExecStart=/home/REPLACE_ME/securePos/posguard/sdn_env/bin/python3 agents/ram_monitor.py
+Restart=always
+RestartSec=3
+User=root
+
+[Install]
+WantedBy=multi-user.target

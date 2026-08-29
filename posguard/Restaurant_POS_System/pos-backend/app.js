@@ -2,6 +2,7 @@ const express = require("express");
 const connectDB = require("./config/database");
 const config = require("./config/config");
 const globalErrorHandler = require("./middlewares/globalErrorHandler");
+const securityTelemetry = require("./middlewares/securityTelemetry");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
 const app = express();
@@ -17,6 +18,7 @@ app.use(cors({
 }))
 app.use(express.json()); // parse incoming request in json format
 app.use(cookieParser())
+app.use(securityTelemetry) // reports failed logins / 5xx spikes to the POSGuard dashboard
 
 
 // Root Endpoint

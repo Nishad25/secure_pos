@@ -113,6 +113,42 @@ def test_gap3_manual_quarantine(net):
            f"{loss}% packet loss" if loss is not None else "could not parse ping output")
 
 
+def test_gap4_critical_infra_guard():
+    try:
+        resp = requests.post(f"{RYU_API}/quarantine/10.0.0.100", timeout=3)
+        refused = resp.status_code == 503 and resp.json().get('success') is False
+        record(4, "auto-quarantine of critical infra (gateway) should be refused without force",
+               refused, str(resp.json()))
+    except requests.exceptions.RequestException as e:
+        record(4, "auto-quarantine of critical infra (gateway) should be refused without force",
+               False, f"could not reach Ryu REST API ({e})")
+
+
+def test_gap4_throttle():
+    try:
+        resp = requests.post(f"{RYU_API}/throttle/10.0.0.3", timeout=3)
+        api_ok = resp.status_code == 200
+    except requests.exceptions.RequestException as e:
+        record(4, "manual throttle API call (graduated response)", False,
+               f"could not reach Ryu REST API ({e})")
+        return
+
+    time.sleep(1)
+    try:
+        status = requests.get(f"{RYU_API}/status", timeout=3).json()
+        throttled = '10.0.0.3' in status.get('throttled_hosts', [])
+        record(4, "pos3 should show as throttled, not fully quarantined",
+               api_ok and throttled, str(status))
+    except requests.exceptions.RequestException as e:
+        record(4, "pos3 should show as throttled, not fully quarantined", False,
+               f"could not reach Ryu REST API ({e})")
+    finally:
+        try:
+            requests.post(f"{RYU_API}/release/10.0.0.3", timeout=3)
+        except requests.exceptions.RequestException:
+            pass
+
+
 def test_gap15_dashboard_alert():
     try:
         requests.post("http://localhost:9000/api/alert", json={
@@ -138,6 +174,17 @@ def print_summary():
     print(f"\n{p} passed, {f} failed, {s} skipped")
 
 
+def cleanup_offense_history():
+    """Reset offense counters so repeated demo runs stay at the base
+    quarantine timeout instead of accumulating an ever-longer one."""
+    for ip in ('10.0.0.1', '10.0.0.2', '10.0.0.3', '10.0.0.100', '10.0.0.200'):
+        try:
+            requests.post(f"{RYU_API}/reset/{ip}", timeout=2)
+            requests.post(f"{RYU_API}/release/{ip}", timeout=2)
+        except requests.exceptions.RequestException:
+            pass
+
+
 def main():
     setLogLevel('info')
     net = build_topology()
@@ -146,9 +193,12 @@ def main():
         test_gap1_allowed_path(net)
         test_gap2_ram_scraper(net)
         test_gap3_manual_quarantine(net)
+        test_gap4_critical_infra_guard()
+        test_gap4_throttle()
         test_gap15_dashboard_alert()
     finally:
         net.stop()
+        cleanup_offense_history()
         print_summary()
 
 

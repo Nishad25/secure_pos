@@ -1,0 +1,24 @@
+# Pinned dependencies for the sdn_env virtualenv (Python 3.8).
+#
+# These exact versions came out of a real, painful compatibility chain
+# found the hard way: newer setuptools breaks Ryu's easy_install-based
+# install, newer eventlet removes the ALREADY_HANDLED symbol Ryu's WSGI
+# app depends on, and Python 3.10+ makes socket.timeout/TimeoutError
+# immutable in a way Ryu's eventlet hub doesn't handle. All three fixes
+# were needed together, not individually.
+#
+# Before trusting this file on a fresh machine, confirm what's ACTUALLY
+# installed and proven working in your current sdn_env, and update this
+# file to match reality rather than assuming these numbers are still
+# exactly right:
+#   sdn_env/bin/pip freeze | grep -Ei "setuptools|eventlet|ryu"
+#
+# scripts/verify_sdn_env.py checks a running environment against this
+# file automatically.
+
+setuptools==57.5.0
+eventlet==0.30.2
+ryu==4.34
+webob
+requests
+psutil
