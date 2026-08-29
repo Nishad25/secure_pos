@@ -3,7 +3,8 @@ import ipaddress
 import json
 import os
 import time
-import requests
+import urllib.error
+import urllib.request
 from webob import Response
 
 from ryu.base import app_manager
@@ -139,14 +140,26 @@ class DynamicFirewall(app_manager.RyuApp):
                 self._send_forensics_alert(ip, entry['packet_count'])
 
     def _send_forensics_alert(self, ip_address, packet_count):
+        # Deliberately stdlib urllib here, not `requests` — this method runs
+        # inside ryu-manager's eventlet-monkey-patched process, and importing
+        # `requests` (via urllib3's eager SSLContext construction) there
+        # collides with eventlet's patched ssl.SSLContext and infinite-loops
+        # in SSLContext.minimum_version. ram_monitor.py and pos_health_monitor.py
+        # run as plain, unpatched processes and are unaffected — this is the
+        # one file where that specific mix bites.
+        payload = json.dumps({
+            'message': f'{ip_address} attempted {packet_count}+ packets while quarantined '
+                       f'— sustained activity, not a one-off',
+            'severity': 'warning',
+            'source': 'dynamic_fw_forensics',
+        }).encode('utf-8')
+        req = urllib.request.Request(
+            DASHBOARD_ALERT_URL, data=payload,
+            headers={'Content-Type': 'application/json'}, method='POST'
+        )
         try:
-            requests.post(DASHBOARD_ALERT_URL, json={
-                'message': f'{ip_address} attempted {packet_count}+ packets while quarantined '
-                           f'— sustained activity, not a one-off',
-                'severity': 'warning',
-                'source': 'dynamic_fw_forensics',
-            }, timeout=2)
-        except requests.exceptions.RequestException:
+            urllib.request.urlopen(req, timeout=2)
+        except (urllib.error.URLError, OSError):
             pass  # dashboard may not be running — don't crash the controller over it
 
     def _clear_forensics(self, ip_address):
