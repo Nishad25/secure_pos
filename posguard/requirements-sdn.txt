@@ -22,3 +22,9 @@ ryu==4.34
 webob
 requests
 psutil
+
+# dashboard/app.py's compliance API — same sdn_env, separate uvicorn
+# process (not loaded inside ryu-manager, so none of the pins above apply)
+fastapi
+uvicorn
+pydantic

@@ -21,7 +21,7 @@ REQUIRED_PACKAGES = {
     "eventlet": "0.30.2",
 }
 
-RECOMMENDED_PACKAGES = ["ryu", "webob", "requests", "psutil"]
+RECOMMENDED_PACKAGES = ["ryu", "webob", "requests", "psutil", "fastapi", "uvicorn", "pydantic"]
 
 
 def check_python_version():
