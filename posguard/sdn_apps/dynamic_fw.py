@@ -118,9 +118,36 @@ class DynamicFirewall(app_manager.RyuApp):
     def _monitor_quarantined_flows(self):
         while True:
             hub.sleep(FORENSICS_POLL_INTERVAL)
+            self._expire_stale_state()
             for datapath in list(self.datapaths.values()):
                 parser = datapath.ofproto_parser
                 datapath.send_msg(parser.OFPFlowStatsRequest(datapath))
+
+    def _expire_stale_state(self):
+        """The switch auto-expires quarantine/throttle flows via their own
+        hard_timeout — that's what actually restores connectivity — but it
+        never tells the controller, so self.quarantined/self.throttled
+        (what the dashboard reads for the red/amber badge) would otherwise
+        stay stale forever after the real block is already gone. This
+        keeps displayed state in sync with actual switch state."""
+        now = time.time()
+        for ip, expires_at in list(self.quarantined.items()):
+            if now >= expires_at:
+                self.quarantined.pop(ip, None)
+                self._clear_forensics(ip)
+                self.logger.info("Quarantine on %s auto-expired", ip)
+                self._send_dashboard_alert(
+                    f"{ip}'s quarantine has expired — it's back online",
+                    severity="info", source="dynamic_fw_lifecycle"
+                )
+        for ip, expires_at in list(self.throttled.items()):
+            if now >= expires_at:
+                self.throttled.pop(ip, None)
+                self.logger.info("Throttle on %s auto-expired", ip)
+                self._send_dashboard_alert(
+                    f"{ip}'s throttle has expired — back to full speed",
+                    severity="info", source="dynamic_fw_lifecycle"
+                )
 
     @set_ev_cls(ofp_event.EventOFPFlowStatsReply, MAIN_DISPATCHER)
     def _flow_stats_reply_handler(self, ev):
@@ -137,9 +164,13 @@ class DynamicFirewall(app_manager.RyuApp):
 
             if entry['packet_count'] >= FORENSICS_ALERT_THRESHOLD and ip not in self._alerted_thresholds:
                 self._alerted_thresholds.add(ip)
-                self._send_forensics_alert(ip, entry['packet_count'])
+                self._send_dashboard_alert(
+                    f"{ip} attempted {entry['packet_count']}+ packets while quarantined "
+                    f"— sustained activity, not a one-off",
+                    severity="warning", source="dynamic_fw_forensics"
+                )
 
-    def _send_forensics_alert(self, ip_address, packet_count):
+    def _send_dashboard_alert(self, message, severity="info", source="dynamic_fw"):
         # Deliberately stdlib urllib here, not `requests` — this method runs
         # inside ryu-manager's eventlet-monkey-patched process, and importing
         # `requests` (via urllib3's eager SSLContext construction) there
@@ -148,10 +179,7 @@ class DynamicFirewall(app_manager.RyuApp):
         # run as plain, unpatched processes and are unaffected — this is the
         # one file where that specific mix bites.
         payload = json.dumps({
-            'message': f'{ip_address} attempted {packet_count}+ packets while quarantined '
-                       f'— sustained activity, not a one-off',
-            'severity': 'warning',
-            'source': 'dynamic_fw_forensics',
+            'message': message, 'severity': severity, 'source': source,
         }).encode('utf-8')
         req = urllib.request.Request(
             DASHBOARD_ALERT_URL, data=payload,
