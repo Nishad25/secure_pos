@@ -70,6 +70,7 @@ MAX_MEMORY_SCAN_BYTES = 5_000_000   # per process, per scan cycle — keep this 
 MAX_REGION_SIZE = 20_000_000        # skip huge mappings — not where card data lives
 
 already_flagged = set()
+already_alerted_patterns = {}  # {service_name: set(masked_pan)} — alert once per unique finding, not every scan
 _cycle_count = 0
 
 
@@ -261,11 +262,18 @@ def main():
                 if findings:
                     print(f"EXPOSURE: {name} memory holds {len(findings)} card-like pattern(s): "
                           f"{findings[:3]}{'...' if len(findings) > 3 else ''}")
-                    send_alert(
-                        f"{len(findings)} Luhn-valid card-number pattern(s) found in {name} "
-                        f"process memory — cleartext PAN exposure risk",
-                        severity="warning", source="ram_monitor_content_scan"
-                    )
+                    # The same resident data gets found on every scan as long as it
+                    # stays in memory — alert once per unique masked pattern per
+                    # service, not every ~30s for the same persistent finding.
+                    seen = already_alerted_patterns.setdefault(name, set())
+                    new_findings = [f for f in findings if f not in seen]
+                    seen.update(findings)
+                    if new_findings:
+                        send_alert(
+                            f"{len(new_findings)} new Luhn-valid card-number pattern(s) found in "
+                            f"{name} process memory — cleartext PAN exposure risk",
+                            severity="warning", source="ram_monitor_content_scan"
+                        )
 
         for pid, name, mem_mb in find_suspicious_processes():
             print(f"Suspicious process: PID {pid} ({name}) using {mem_mb:.1f} MB")
