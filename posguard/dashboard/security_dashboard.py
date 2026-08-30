@@ -102,7 +102,10 @@ with st.sidebar:
             if target_ip:
                 result, err = api_post(f"{RYU_API}/quarantine/{target_ip}",
                                         params={'force': 'true'} if force_critical else {})
-                st.error(f"Failed: {err}") if err else st.success(result.get("message", "Quarantined"))
+                if err:
+                    st.error(f"Failed: {err}")
+                else:
+                    st.success(result.get("message", "Quarantined"))
             else:
                 st.warning("Enter a terminal IP first")
     with col_t:
@@ -110,21 +113,30 @@ with st.sidebar:
             if target_ip:
                 result, err = api_post(f"{RYU_API}/throttle/{target_ip}",
                                         params={'force': 'true'} if force_critical else {})
-                st.error(f"Failed: {err}") if err else st.success(result.get("message", "Throttled"))
+                if err:
+                    st.error(f"Failed: {err}")
+                else:
+                    st.success(result.get("message", "Throttled"))
             else:
                 st.warning("Enter a terminal IP first")
     with col_r:
         if st.button("🔓 Release", use_container_width=True):
             if target_ip:
                 result, err = api_post(f"{RYU_API}/release/{target_ip}")
-                st.error(f"Failed: {err}") if err else st.success(result.get("message", "Released"))
+                if err:
+                    st.error(f"Failed: {err}")
+                else:
+                    st.success(result.get("message", "Released"))
             else:
                 st.warning("Enter a terminal IP first")
 
     if st.button("↺ Reset offense history", use_container_width=True):
         if target_ip:
             result, err = api_post(f"{RYU_API}/reset/{target_ip}")
-            st.error(f"Failed: {err}") if err else st.info(result.get("message", "Reset"))
+            if err:
+                st.error(f"Failed: {err}")
+            else:
+                st.info(result.get("message", "Reset"))
         else:
             st.warning("Enter a terminal IP first")
 
